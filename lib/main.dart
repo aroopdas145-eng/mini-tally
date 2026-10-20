@@ -11,30 +11,12 @@ void main() async {
 Future<Database> initDatabase() async {
   final dbPath = await getDatabasesPath();
   final path = p.join(dbPath, 'tally_gold_v2.db');
-
   return await openDatabase(
     path,
     version: 1,
     onCreate: (db, version) async {
-      await db.execute('''
-        CREATE TABLE ledgers (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          type TEXT NOT NULL
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE transactions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          ledger_id INTEGER,
-          type TEXT NOT NULL,
-          amount REAL NOT NULL,
-          note TEXT,
-          date TEXT NOT NULL,
-          FOREIGN KEY (ledger_id) REFERENCES ledgers (id)
-        )
-      ''');
-
+      await db.execute('CREATE TABLE ledgers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL)');
+      await db.execute('CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, ledger_id INTEGER, type TEXT NOT NULL, amount REAL NOT NULL, note TEXT, date TEXT NOT NULL, FOREIGN KEY (ledger_id) REFERENCES ledgers (id))');
       await db.insert('ledgers', {'name': 'Cash in Hand', 'type': 'Cash-in-hand'});
       await db.insert('ledgers', {'name': 'Bank Account', 'type': 'Bank Accounts'});
       await db.insert('ledgers', {'name': 'Sales Account', 'type': 'Sales Accounts'});
@@ -70,7 +52,6 @@ class TallyPrimeApp extends StatelessWidget {
 class GatewayOfTallyScreen extends StatefulWidget {
   final Database db;
   const GatewayOfTallyScreen({super.key, required this.db});
-
   @override
   State<GatewayOfTallyScreen> createState() => _GatewayOfTallyScreenState();
 }
@@ -108,9 +89,7 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gateway of Tally', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBar(title: const Text('Gateway of Tally', style: TextStyle(fontWeight: FontWeight.bold))),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -133,11 +112,7 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF81C784)),
-                      ),
+                      decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF81C784))),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -152,11 +127,7 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3E0),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFFFB74D)),
-                      ),
+                      decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFFB74D))),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -174,53 +145,28 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 children: [
-                  _buildMenuCard(
-                    title: 'Vouchers (Entry)',
-                    subtitle: 'Sales, Purchase, Payment, Receipt',
-                    icon: Icons.receipt_long,
-                    onTap: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (context) => VoucherEntryScreen(db: widget.db)));
-                      _refreshStats();
-                    },
-                  ),
+                  _buildMenuCard(title: 'Vouchers (Entry)', subtitle: 'Sales, Purchase, Payment, Receipt', icon: Icons.receipt_long, onTap: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (context) => VoucherEntryScreen(db: widget.db)));
+                    _refreshStats();
+                  }),
                   const SizedBox(height: 10),
-                  _buildMenuCard(
-                    title: 'Day Book (Transactions)',
-                    subtitle: '$_voucherCount total entries',
-                    icon: Icons.history_edu,
-                    onTap: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (context) => DayBookScreen(db: widget.db)));
-                      _refreshStats();
-                    },
-                  ),
+                  _buildMenuCard(title: 'Day Book (Transactions)', subtitle: '$_voucherCount total entries', icon: Icons.history_edu, onTap: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (context) => DayBookScreen(db: widget.db)));
+                    _refreshStats();
+                  }),
                   const SizedBox(height: 10),
-                  _buildMenuCard(
-                    title: 'Create Ledger (Party)',
-                    subtitle: 'Customer, Supplier, Expenses',
-                    icon: Icons.person_add_alt_1,
-                    onTap: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (context) => CreateLedgerScreen(db: widget.db)));
-                      _refreshStats();
-                    },
-                  ),
+                  _buildMenuCard(title: 'Create Ledger (Party)', subtitle: 'Customer, Supplier, Expenses', icon: Icons.person_add_alt_1, onTap: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (context) => CreateLedgerScreen(db: widget.db)));
+                    _refreshStats();
+                  }),
                   const SizedBox(height: 10),
-                  _buildMenuCard(
-                    title: 'Accounts & Khata List',
-                    subtitle: 'Party-wise balance summary',
-                    icon: Icons.account_balance_wallet,
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => LedgerDirectoryScreen(db: widget.db)));
-                    },
-                  ),
+                  _buildMenuCard(title: 'Accounts & Khata List', subtitle: 'Party-wise balance summary', icon: Icons.account_balance_wallet, onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LedgerDirectoryScreen()));
+                  }),
                   const SizedBox(height: 10),
-                  _buildMenuCard(
-                    title: 'Reports (P&L)',
-                    subtitle: 'Real-time profit & loss',
-                    icon: Icons.pie_chart_outline,
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => TallyReportsScreen(db: widget.db)));
-                    },
-                  ),
+                  _buildMenuCard(title: 'Reports (P&L)', subtitle: 'Real-time profit & loss', icon: Icons.pie_chart_outline, onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => TallyReportsScreen(db: widget.db)));
+                  }),
                 ],
               ),
             ),
@@ -230,22 +176,13 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
     );
   }
 
-  Widget _buildMenuCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildMenuCard({required String title, required String subtitle, required IconData icon, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
         child: Row(
           children: [
             Icon(icon, color: const Color(0xFF0D3B66), size: 28),
@@ -270,9 +207,275 @@ class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
 class VoucherEntryScreen extends StatefulWidget {
   final Database db;
   const VoucherEntryScreen({super.key, required this.db});
-
   @override
   State<VoucherEntryScreen> createState() => _VoucherEntryScreenState();
+}
+
+class _VoucherEntryScreenState extends State<VoucherEntryScreen> {
+  final _amountCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+  String _entryType = 'DR';
+  int? _selectedLedgerId;
+  List<Map<String, dynamic>> _ledgers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLedgers();
+  }
+
+  Future<void> _fetchLedgers() async {
+    final list = await widget.db.query('ledgers', orderBy: 'name ASC');
+    setState(() {
+      _ledgers = list;
+      if (list.isNotEmpty) _selectedLedgerId = list.first['id'] as int;
+    });
+  }
+
+  Future<void> _saveVoucher() async {
+    final amt = double.tryParse(_amountCtrl.text);
+    if (amt == null || amt <= 0 || _selectedLedgerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sahi amount aur account chuniye')));
+      return;
+    }
+    final today = DateTime.now().toString().split(' ')[0];
+    await widget.db.insert('transactions', {
+      'ledger_id': _selectedLedgerId,
+      'type': _entryType,
+      'amount': amt,
+      'note': _noteCtrl.text.trim().isEmpty ? 'Voucher' : _noteCtrl.text.trim(),
+      'date': today,
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voucher Saved!'), backgroundColor: Colors.green));
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('New Voucher Entry')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: _entryType == 'DR' ? Colors.green : Colors.grey.shade300),
+                    onPressed: () => setState(() => _entryType = 'DR'),
+                    child: Text('DEBIT (DR)', style: TextStyle(color: _entryType == 'DR' ? Colors.white : Colors.black)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: _entryType == 'CR' ? Colors.red : Colors.grey.shade300),
+                    onPressed: () => setState(() => _entryType = 'CR'),
+                    child: Text('CREDIT (CR)', style: TextStyle(color: _entryType == 'CR' ? Colors.white : Colors.black)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int>(
+              value: _selectedLedgerId,
+              decoration: const InputDecoration(labelText: 'Account Name', border: OutlineInputBorder()),
+              items: _ledgers.map((l) => DropdownMenuItem<int>(value: l['id'] as int, child: Text('${l['name']} (${l['type']})'))).toList(),
+              onChanged: (v) => setState(() => _selectedLedgerId = v),
+            ),
+            const SizedBox(height: 16),
+            TextField(controller: _amountCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount (₹)', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            TextField(controller: _noteCtrl, decoration: const InputDecoration(labelText: 'Narration / Remark', border: OutlineInputBorder())),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A2E50)),
+                onPressed: _saveVoucher,
+                child: const Text('SAVE VOUCHER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DayBookScreen extends StatefulWidget {
+  final Database db;
+  const DayBookScreen({super.key, required this.db});
+  @override
+  State<DayBookScreen> createState() => _DayBookScreenState();
+}
+
+class _DayBookScreenState extends State<DayBookScreen> {
+  List<Map<String, dynamic>> _list = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await widget.db.rawQuery('SELECT t.id, t.type, t.amount, t.note, t.date, l.name as ledger_name FROM transactions t JOIN ledgers l ON t.ledger_id = l.id ORDER BY t.id DESC');
+    setState(() => _list = res);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Day Book')),
+      body: _list.isEmpty
+          ? const Center(child: Text('Koi transaction nahi hai.'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: _list.length,
+              itemBuilder: (context, idx) {
+                final item = _list[idx];
+                final isDr = item['type'] == 'DR';
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isDr ? Colors.green.shade100 : Colors.red.shade100,
+                      child: Text(item['type'], style: TextStyle(color: isDr ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text(item['ledger_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${item['date']} • ${item['note']}'),
+                    trailing: Text('₹${item['amount']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDr ? Colors.green : Colors.red)),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+class CreateLedgerScreen extends StatefulWidget {
+  final Database db;
+  const CreateLedgerScreen({super.key, required this.db});
+  @override
+  State<CreateLedgerScreen> createState() => _CreateLedgerScreenState();
+}
+
+class _CreateLedgerScreenState extends State<CreateLedgerScreen> {
+  final _nameCtrl = TextEditingController();
+  final _balanceCtrl = TextEditingController();
+  String _selectedGroup = 'Sundry Debtors';
+  final List<String> _groups = ['Sundry Debtors', 'Sundry Creditors', 'Bank Accounts', 'Cash-in-hand', 'Direct Expenses', 'Indirect Expenses', 'Sales Accounts', 'Purchase Accounts'];
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    final openBal = double.tryParse(_balanceCtrl.text) ?? 0.0;
+    await widget.db.transaction((txn) async {
+      final id = await txn.insert('ledgers', {'name': name, 'type': _selectedGroup});
+      if (openBal > 0) {
+        final isDebtor = _selectedGroup == 'Sundry Debtors' || _selectedGroup == 'Bank Accounts';
+        await txn.insert('transactions', {
+          'ledger_id': id,
+          'type': isDebtor ? 'DR' : 'CR',
+          'amount': openBal,
+          'note': 'Opening Balance',
+          'date': DateTime.now().toString().split(' ')[0],
+        });
+      }
+    });
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Create Ledger')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Party / Account Name', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedGroup,
+              decoration: const InputDecoration(labelText: 'Under Group', border: OutlineInputBorder()),
+              items: _groups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+              onChanged: (v) => setState(() => _selectedGroup = v!),
+            ),
+            const SizedBox(height: 16),
+            TextField(controller: _balanceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Opening Balance', border: OutlineInputBorder())),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A2E50)),
+                onPressed: _save,
+                child: const Text('SAVE ACCOUNT', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LedgerDirectoryScreen extends StatelessWidget {
+  const LedgerDirectoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ledger Directory')),
+      body: const Center(child: Text('Khata List Directory')),
+    );
+  }
+}
+
+class TallyReportsScreen extends StatelessWidget {
+  final Database db;
+  const TallyReportsScreen({super.key, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Financial Reports')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: db.rawQuery('SELECT l.name, l.type, COALESCE(SUM(CASE WHEN t.type = \'DR\' THEN t.amount ELSE 0 END), 0) AS dr, COALESCE(SUM(CASE WHEN t.type = \'CR\' THEN t.amount ELSE 0 END), 0) AS cr FROM ledgers l LEFT JOIN transactions t ON l.id = t.ledger_id GROUP BY l.id'),
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final data = snap.data!;
+          double inc = 0.0;
+          double exp = 0.0;
+          for (var r in data) {
+            final type = r['type'] as String;
+            final dr = (r['dr'] as num).toDouble();
+            final cr = (r['cr'] as num).toDouble();
+            if (type.contains('Sales') || type.contains('Income')) {
+              inc += (cr - dr);
+            } else if (type.contains('Expense') || type.contains('Purchase')) {
+              exp += (dr - cr);
+            }
+          }
+          final net = inc - exp;
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Card(
+                  color: net >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(net >= 0 ? 'Net Profit' : 'Net Loss', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('₹${net.abs().toStringAsFixed(2)}', style: const TextStyle(color: C=> _VoucherEntryScreenState();
 }
 
 class _VoucherEntryScreenState extends State<VoucherEntryScreen> {
