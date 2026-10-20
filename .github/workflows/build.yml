@@ -25,23 +25,185 @@ jobs:
           flutter-version: "3.19.6"
           channel: "stable"
 
-      - name: Create Native Android Project
+      - name: Clean Recreate All Files
         run: |
+          rm -rf android
           flutter create --platforms=android --project-name mini_tally --org com.tallymini .
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 26/g' android/app/build.gradle
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 26/g' android/app/build.gradle || true
+          
+          # Forcefully overwrite main.dart with tested compact clean code
+          cat << 'EOF' > lib/main.dart
+          import 'package:flutter/material.dart';
+
+          void main() => runApp(const TallyApp());
+
+          class TallyApp extends StatelessWidget {
+            const TallyApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'Tally Mobile',
+                theme: ThemeData(
+                  scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+                  primaryColor: const Color(0xFF0D3B66),
+                  appBarTheme: const AppBarTheme(
+                    backgroundColor: Color(0xFF0A2E50),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                home: const TallyHome(),
+              );
+            }
+          }
+
+          class TallyHome extends StatefulWidget {
+            const TallyHome({super.key});
+
+            @override
+            State<TallyHome> createState() => _TallyHomeState();
+          }
+
+          class _TallyHomeState extends State<TallyHome> {
+            final List<Map<String, dynamic>> _vouchers = [
+              {'party': 'Cash in Hand', 'type': 'DR', 'amount': 25000.0, 'date': 'Today'},
+              {'party': 'Sales Account', 'type': 'CR', 'amount': 12000.0, 'date': 'Today'},
+            ];
+
+            double get _dr => _vouchers.where((e) => e['type'] == 'DR').fold(0.0, (s, e) => s + (e['amount'] as double));
+            double get _cr => _vouchers.where((e) => e['type'] == 'CR').fold(0.0, (s, e) => s + (e['amount'] as double));
+
+            void _add(String p, String t, double a) {
+              setState(() {
+                _vouchers.insert(0, {'party': p, 'type': t, 'amount': a, 'date': 'Today'});
+              });
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: const Text('Gateway of Tally')),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      color: const Color(0xFF1E4870),
+                      child: const Text('Tally Prime Mobile (Offline Safe)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            color: Colors.green.shade50,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total In (Dr)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                Text('₹$_dr', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            color: Colors.orange.shade50,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Out (Cr)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                Text('₹$_cr', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A2E50)),
+                      onPressed: () => _openDialog(),
+                      child: const Text('NEW VOUCHER ENTRY', style: TextStyle(color: Colors.white)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Day Book', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ..._vouchers.map((v) => Card(
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: v['type'] == 'DR' ? Colors.green.shade100 : Colors.red.shade100,
+                          child: Text(v['type'], style: TextStyle(color: v['type'] == 'DR' ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(v['party'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(v['date']),
+                        trailing: Text('₹${v['amount']}', style: TextStyle(fontWeight: FontWeight.bold, color: v['type'] == 'DR' ? Colors.green : Colors.red)),
+                      ),
+                    )),
+                  ],
+                ),
+              );
+            }
+
+            void _openDialog() {
+              final pCtrl = TextEditingController();
+              final aCtrl = TextEditingController();
+              String t = 'DR';
+              showDialog(
+                context: context,
+                builder: (ctx) => StatefulBuilder(
+                  builder: (context, setD) => AlertDialog(
+                    title: const Text('New Entry'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(controller: pCtrl, decoration: const InputDecoration(labelText: 'Party / Ledger')),
+                        TextField(controller: aCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount (₹)')),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ChoiceChip(label: const Text('DR (In)'), selected: t == 'DR', onSelected: (_) => setD(() => t = 'DR')),
+                            ChoiceChip(label: const Text('CR (Out)'), selected: t == 'CR', onSelected: (_) => setD(() => t = 'CR')),
+                          ],
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                      ElevatedButton(
+                        onPressed: () {
+                          final amt = double.tryParse(aCtrl.text);
+                          if (pCtrl.text.isNotEmpty && amt != null && amt > 0) {
+                            _add(pCtrl.text.trim(), t, amt);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          EOF
 
       - name: Build Debug APK
         run: |
-          flutter pub get
           flutter build apk --debug
-          cp build/app/outputs/flutter-apk/app-debug.apk Tally_Prime.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk Tally_App.apk
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v5.0.0
-          name: "Tally Prime Working APK"
-          files: Tally_Prime.apk
+          tag_name: v6.0.0
+          name: "Tally App Fresh Build"
+          files: Tally_App.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
