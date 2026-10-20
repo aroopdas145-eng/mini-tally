@@ -37,7 +37,7 @@ Future<Database> initDatabase() async {
       ''');
 
       await db.insert('ledgers', {'name': 'Cash in Hand', 'type': 'Cash-in-hand'});
-      await db.insert('ledgers', {'name': 'State Bank of India', 'type': 'Bank Accounts'});
+      await db.insert('ledgers', {'name': 'Bank Account', 'type': 'Bank Accounts'});
       await db.insert('ledgers', {'name': 'Sales Account', 'type': 'Sales Accounts'});
       await db.insert('ledgers', {'name': 'Purchase Account', 'type': 'Purchase Accounts'});
       await db.insert('ledgers', {'name': 'General Expenses', 'type': 'Indirect Expenses'});
@@ -513,8 +513,8 @@ class _DayBookScreenState extends State<DayBookScreen> {
   }
 
   Future<void> _loadDayBook() async {
-    final res = await widget.db.rawQuery('''
-      SELECT t.id, t.type, t.amount, t.note, t.date, l.name as ledger_name 
-      FROM transactions t 
-      JOIN ledgers l ON t.ledger_id = l.id 
-      
+    final res = await widget.db.rawQuery(
+      'SELECT t.id, t.type, t.amount, t.note, t.date, l.name as ledger_name '
+      'FROM transactions t '
+      'JOIN ledgers l ON t.ledger_id = l.id '
+      'ORD
