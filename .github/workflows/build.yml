@@ -21,18 +21,21 @@ jobs:
         with:
           channel: "stable"
 
-      - name: Recreate Android Project Files
+      - name: Recreate Android Project & Fix MinSdkVersion
         run: |
-          flutter create --platforms=android .
+          flutter create --platforms=android --org com.tallymini .
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle.kts || true
 
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build Release APK
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Tally-App-Release
           path: build/app/outputs/flutter-apk/app-release.apk
+          
