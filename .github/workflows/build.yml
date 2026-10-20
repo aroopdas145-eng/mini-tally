@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Java
@@ -25,9 +25,14 @@ jobs:
           flutter-version: "3.19.6"
           channel: "stable"
 
+      - name: Create Native Android Project
+        run: |
+          flutter create --platforms=android --project-name mini_tally --org com.tallymini .
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 26/g' android/app/build.gradle
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 26/g' android/app/build.gradle || true
+
       - name: Build Debug APK
         run: |
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 26/g' android/app/build.gradle || true
           flutter pub get
           flutter build apk --debug
           cp build/app/outputs/flutter-apk/app-debug.apk Tally_Prime.apk
@@ -35,8 +40,8 @@ jobs:
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.0.0
-          name: "Tally Prime Mobile"
+          tag_name: v5.0.0
+          name: "Tally Prime Working APK"
           files: Tally_Prime.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
