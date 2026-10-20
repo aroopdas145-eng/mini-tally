@@ -27,6 +27,7 @@ jobs:
 
       - name: Recreate Android Project Files
         run: |
+          rm -rf android
           flutter create --platforms=android --project-name mini_tally --org com.tallymini .
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 26/g' android/app/build.gradle
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 26/g' android/app/build.gradle || true
@@ -200,6 +201,212 @@ jobs:
                             const SizedBox(height: 10),
                             _buildMenuCard(title: 'Accounts & Khata List', subtitle: 'Party-wise balance summary', icon: Icons.account_balance_wallet, onTap: () {
                               Navigator.push(context, MaterialPageRoute(builder: (context) => LedgerDirectoryScreen(db: widget.db)));
+                            }),
+                            const SizedBox(height: 10),
+                            _buildMenuCard(title: 'Reports (P&L)', subtitle: 'Real-time profit & loss', icon: Icons.pie_chart_outline, onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => TallyReportsScreen(db: widget.db)));
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            Widget _buildMenuCard({required String title, required String subtitle, required IconData icon, required VoidCallback onTap}) {
+              return InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+                  child: Row(
+                    children: [
+                      Icon(icon, color: const Color(0xFF0D3B66), size: 28),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          class VoucherEntryScreen extends StatefulWidget {
+            final Database db;
+            const VoucherEntryScreen({super.key, required this.db});
+            @override
+            State<VoucherEntryScreen> createState() => _VoucherEntryScreenState();
+          }
+
+          class _VoucherEntryScreenState extends State<VoucherEntryScreen> {
+            final _amountCtrl = TextEditingController();
+            final _noteCtrl = TextEditingController();
+            String _entryType = 'DR';
+            int? _selectedLedgerId;
+            List<Map<String, dynamic>> _ledgers = [];
+
+            @override
+            void initState() {
+              super.initState();
+              _fetchLedgers();
+            }
+
+            Future<void> _fetchLedgers() async {
+              final list = await widget.db.query('ledgers', orderBy: 'name ASC');
+              setState(() {
+                _ledgers = list;
+                if (list.isNotEmpty) _selectedLedgerId = list.first['id'] as int;
+              });
+            }
+
+            Future<void> _saveVoucher() async {
+              final amt = double.tryParse(_amountCtrl.text);
+              if (amt == null || amt <= 0 || _selectedLedgerId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sahi amount aur account chuniye')));
+                return;
+              }
+              final today = DateTime.now().toString().split(' ')[0];
+              await widget.db.insert('transactions', {
+                'ledger_id': _selectedLedgerId,
+                'type': _entryType,
+                'amount': amt,
+                'note': _noteCtrl.text.trim().isEmpty ? 'Voucher' : _noteCtrl.text.trim(),
+                'date': today,
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voucher Saved!'), backgroundColor: Colors.green));
+                Navigator.pop(context);
+              }
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: const Text('New Voucher Entry')),
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: _entryType == 'DR' ? Colors.green : Colors.grey.shade300),
+                              onPressed: () => setState(() => _entryType = 'DR'),
+                              child: Text('DEBIT (DR)', style: TextStyle(color: _entryType == 'DR' ? Colors.white : Colors.black)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: _entryType == 'CR' ? Colors.red : Colors.grey.shade300),
+                              onPressed: () => setState(() => _entryType = 'CR'),
+                              child: Text('CREDIT (CR)', style: TextStyle(color: _entryType == 'CR' ? Colors.white : Colors.black)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        value: _selectedLedgerId,
+                        decoration: const InputDecoration(labelText: 'Account Name', border: OutlineInputBorder()),
+                        items: _ledgers.map((l) => DropdownMenuItem<int>(value: l['id'] as int, child: Text('${l['name']} (${l['type']})'))).toList(),
+                        onChanged: (v) => setState(() => _selectedLedgerId = v),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(controller: _amountCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount (₹)', border: OutlineInputBorder())),
+                      const SizedBox(height: 16),
+                      TextField(controller: _noteCtrl, decoration: const InputDecoration(labelText: 'Narration / Remark', border: OutlineInputBorder())),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A2E50)),
+                          onPressed: _saveVoucher,
+                          child: const Text('SAVE VOUCHER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          class DayBookScreen extends StatefulWidget {
+            final Database db;
+            const DayBookScreen({super.key, required this.db});
+            @override
+            State<DayBookScreen> createState() => _DayBookScreenState();
+          }
+
+          class _DayBookScreenState extends State<DayBookScreen> {
+            List<Map<String, dynamic>> _list = [];
+
+            @override
+            void initState() {
+              super.initState();
+              _load();
+            }
+
+            Future<void> _load() async {
+              final res = await widget.db.rawQuery('SELECT t.id, t.type, t.amount, t.note, t.date, l.name as ledger_name FROM transactions t JOIN ledgers l ON t.ledger_id = l.id ORDER BY t.id DESC');
+              setState(() => _list = res);
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: const Text('Day Book')),
+                body: _list.isEmpty
+                    ? const Center(child: Text('Koi transaction nahi hai.'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _list.length,
+                        itemBuilder: (context, idx) {
+                          final item = _list[idx];
+                          final isDr = item['type'] == 'DR';
+                          return Card(
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isDr ? Colors.green.shade100 : Colors.red.shade100,
+                                child: Text(item['type'], style: TextStyle(color: isDr ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                              ),
+                              title: Text(item['ledger_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text('${item['date']} • ${item['note']}'),
+                              trailing: Text('₹${item['amount']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDr ? Colors.green : Colors.red)),
+                            ),
+                          );
+                        },
+                      ),
+              );
+            }
+          }
+
+          class CreateLedgerScreen extends StatefulWidget {
+            final Database db;
+            const CreateLedgerScreen({super.key, required this.db});
+            @override
+            State<CreateLedgerScreen> createState() => _CreateLedgerScreenState();
+          }
+
+          class _CreateLedgerScreenState extends State<CreateLedgerScreen> {
+            final _nameCtrl = TextEditingController();
+            final _balanceCtrl = TextEditingController();
+            String _selectoryScreen(db: widget.db)));
                             }),
                             const SizedBox(height: 10),
                             _buildMenuCard(title: 'Reports (P&L)', subtitle: 'Real-time profit & loss', icon: Icons.pie_chart_outline, onTap: () {
