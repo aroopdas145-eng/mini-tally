@@ -13,7 +13,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
+          distribution: "temurin"
           java-version: "17"
 
       - name: Setup Flutter
@@ -21,7 +21,11 @@ jobs:
         with:
           channel: "stable"
 
-      - name: Get Packages
+      - name: Recreate Android Project Files
+        run: |
+          flutter create --platforms=android .
+
+      - name: Get Dependencies
         run: flutter pub get
 
       - name: Build APK
@@ -32,4 +36,3 @@ jobs:
         with:
           name: Tally-App-Release
           path: build/app/outputs/flutter-apk/app-release.apk
-          
