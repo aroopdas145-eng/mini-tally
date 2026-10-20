@@ -24,7 +24,7 @@ jobs:
 
       - name: Recreate Android Project Files
         run: |
-          flutter create --platforms=android --org com.tallymini .
+          flutter create --platforms=android --project-name mini_tally --org com.tallymini .
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
 
