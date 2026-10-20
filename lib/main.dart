@@ -1,245 +1,173 @@
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart' as p;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final db = await initDatabase();
-  runApp(TallyPrimeApp(db: db));
+void main() {
+  runApp(const TallyApp());
 }
 
-Future<Database> initDatabase() async {
-  final dbPath = await getDatabasesPath();
-  final path = p.join(dbPath, 'tally_gold_v2.db');
-  return await openDatabase(
-    path,
-    version: 1,
-    onCreate: (db, version) async {
-      await db.execute('CREATE TABLE ledgers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL)');
-      await db.execute('CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, ledger_id INTEGER, type TEXT NOT NULL, amount REAL NOT NULL, note TEXT, date TEXT NOT NULL, FOREIGN KEY (ledger_id) REFERENCES ledgers (id))');
-      await db.insert('ledgers', {'name': 'Cash in Hand', 'type': 'Cash-in-hand'});
-      await db.insert('ledgers', {'name': 'Bank Account', 'type': 'Bank Accounts'});
-      await db.insert('ledgers', {'name': 'Sales Account', 'type': 'Sales Accounts'});
-      await db.insert('ledgers', {'name': 'Purchase Account', 'type': 'Purchase Accounts'});
-      await db.insert('ledgers', {'name': 'General Expenses', 'type': 'Indirect Expenses'});
-    },
-  );
-}
-
-class TallyPrimeApp extends StatelessWidget {
-  final Database db;
-  const TallyPrimeApp({super.key, required this.db});
+class TallyApp extends StatelessWidget {
+  const TallyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Tally Mobile Prime',
+      title: 'Tally Mobile',
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF4F7FB),
         primaryColor: const Color(0xFF0D3B66),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0A2E50),
           foregroundColor: Colors.white,
-          elevation: 2,
         ),
       ),
-      home: GatewayOfTallyScreen(db: db),
+      home: const GatewayScreen(),
     );
   }
 }
 
-class GatewayOfTallyScreen extends StatefulWidget {
-  final Database db;
-  const GatewayOfTallyScreen({super.key, required this.db});
+class GatewayScreen extends StatefulWidget {
+  const GatewayScreen({super.key});
+
   @override
-  State<GatewayOfTallyScreen> createState() => _GatewayOfTallyScreenState();
+  State<GatewayScreen> createState() => _GatewayScreenState();
 }
 
-class _GatewayOfTallyScreenState extends State<GatewayOfTallyScreen> {
-  double _totalDebit = 0.0;
-  double _totalCredit = 0.0;
-  int _voucherCount = 0;
+class _GatewayScreenState extends State<GatewayScreen> {
+  final List<Map<String, dynamic>> _vouchers = [
+    {'party': 'Cash in Hand', 'type': 'DR', 'amount': 15000.0, 'date': '2026-10-21'},
+    {'party': 'Sales Account', 'type': 'CR', 'amount': 8500.0, 'date': '2026-10-21'},
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _refreshStats();
-  }
+  double get _totalDebit => _vouchers.where((e) => e['type'] == 'DR').fold(0.0, (s, e) => s + (e['amount'] as double));
+  double get _totalCredit => _vouchers.where((e) => e['type'] == 'CR').fold(0.0, (s, e) => s + (e['amount'] as double));
 
-  Future<void> _refreshStats() async {
-    final entries = await widget.db.rawQuery('SELECT type, amount FROM transactions');
-    double dr = 0.0;
-    double cr = 0.0;
-    for (var r in entries) {
-      final amt = (r['amount'] as num).toDouble();
-      if (r['type'] == 'DR') {
-        dr += amt;
-      } else {
-        cr += amt;
-      }
-    }
+  void _addVoucher(String party, String type, double amt) {
     setState(() {
-      _totalDebit = dr;
-      _totalCredit = cr;
-      _voucherCount = entries.length;
+      _vouchers.insert(0, {
+        'party': party,
+        'type': type,
+        'amount': amt,
+        'date': DateTime.now().toString().split(' ')[0],
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gateway of Tally', style: TextStyle(fontWeight: FontWeight.bold))),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: const Color(0xFF1E4870),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('My Business Khata', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  Text('Offline Safe', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF81C784))),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total In (Dr)', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 12)),
-                          const SizedBox(height: 6),
-                          Text('₹${_totalDebit.toStringAsFixed(1)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-                        ],
-                      ),
-                    ),
+      appBar: AppBar(title: const Text('Gateway of Tally')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: const Color(0xFF1E4870), borderRadius: BorderRadius.circular(10)),
+            child: const Text('Tally Mobile Khata (Offline)', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Total In (Dr)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('₹${_totalDebit.toStringAsFixed(1)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFFB74D))),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Out (Cr)', style: TextStyle(color: Color(0xFFE65100), fontWeight: FontWeight.bold, fontSize: 12)),
-                          const SizedBox(height: 6),
-                          Text('₹${_totalCredit.toStringAsFixed(1)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFBF360C))),
-                        ],
-                      ),
-                    ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Total Out (Cr)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('₹${_totalCredit.toStringAsFixed(1)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                ],
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A2E50), padding: const EdgeInsets.symmetric(vertical: 14)),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text('NEW VOUCHER ENTRY', style: TextStyle(color: Colors.white)),
+            onPressed: () => _openEntryDialog(context),
+          ),
+          const SizedBox(height: 20),
+          const Text('Recent Transactions (Day Book)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 10),
+          ..._vouchers.map((v) => Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: v['type'] == 'DR' ? Colors.green.shade100 : Colors.red.shade100,
+                child: Text(v['type'], style: TextStyle(color: v['type'] == 'DR' ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+              ),
+              title: Text(v['party'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(v['date']),
+              trailing: Text('₹${v['amount']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: v['type'] == 'DR' ? Colors.green : Colors.red)),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
+          )),
+        ],
+      ),
+    );
+  }
+
+  void _openEntryDialog(BuildContext context) {
+    final partyCtrl = TextEditingController();
+    final amtCtrl = TextEditingController();
+    String selectedType = 'DR';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDState) => AlertDialog(
+          title: const Text('Add Voucher'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: partyCtrl, decoration: const InputDecoration(labelText: 'Party / Ledger Name')),
+              TextField(controller: amtCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount (₹)')),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildMenuCard(title: 'Vouchers (Entry)', subtitle: 'Sales, Purchase, Payment, Receipt', icon: Icons.receipt_long, onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => VoucherEntryScreen(db: widget.db)));
-                    _refreshStats();
-                  }),
-                  const SizedBox(height: 10),
-                  _buildMenuCard(title: 'Day Book (Transactions)', subtitle: '$_voucherCount total entries', icon: Icons.history_edu, onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => DayBookScreen(db: widget.db)));
-                    _refreshStats();
-                  }),
-                  const SizedBox(height: 10),
-                  _buildMenuCard(title: 'Create Ledger (Party)', subtitle: 'Customer, Supplier, Expenses', icon: Icons.person_add_alt_1, onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => CreateLedgerScreen(db: widget.db)));
-                    _refreshStats();
-                  }),
-                  const SizedBox(height: 10),
-                  _buildMenuCard(title: 'Accounts & Khata List', subtitle: 'Party-wise balance summary', icon: Icons.account_balance_wallet, onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LedgerDirectoryScreen()));
-                  }),
-                  const SizedBox(height: 10),
-                  _buildMenuCard(title: 'Reports (P&L)', subtitle: 'Real-time profit & loss', icon: Icons.pie_chart_outline, onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => TallyReportsScreen(db: widget.db)));
-                  }),
+                  ChoiceChip(label: const Text('Debit (In)'), selected: selectedType == 'DR', onSelected: (_) => setDState(() => selectedType = 'DR')),
+                  ChoiceChip(label: const Text('Credit (Out)'), selected: selectedType == 'CR', onSelected: (_) => setDState(() => selectedType = 'CR')),
                 ],
               ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () {
+                final amt = double.tryParse(amtCtrl.text);
+                if (partyCtrl.text.isNotEmpty && amt != null && amt > 0) {
+                  _addVoucher(partyCtrl.text.trim(), selectedType, amt);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('SAVE'),
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildMenuCard({required String title, required String subtitle, required IconData icon, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF0D3B66), size: 28),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
-class VoucherEntryScreen extends StatefulWidget {
-  final Database db;
-  const VoucherEntryScreen({super.key, required this.db});
-  @override
-  State<VoucherEntryScreen> createState() => _VoucherEntryScreenState();
-}
-
-class _VoucherEntryScreenState extends State<VoucherEntryScreen> {
-  final _amountCtrl = TextEditingController();
-  final _noteCtrl = TextEditingController();
-  String _entryType = 'DR';
-  int? _selectedLedgerId;
-  List<Map<String, dynamic>> _ledgers = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLedgers();
-  }
-
-  Future<void> _fetchLedgers() async {
-    final list = await widget.db.query('ledgers', orderBy: 'name ASC');
-    setState(() {
-      _ledgers = list;
-      if (list.isNotEmpty) _selectedLedgerId = list.first['id'] as int;
-    });
-  }
-
-  Future<void> _saveVoucher() async {
-    final amt = double.tryParse(_amountCtrl.text);
-    if (amt == null || amt <= 0 || _selectedLedgerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sahi amount aur account chuniye')));
-      return;
-    }
-    final today = DateTime.now().toString().split(' ')[0];
-    await widget.db.insert('transactions', {
+.db.insert('transactions', {
       'ledger_id': _selectedLedgerId,
       'type': _entryType,
       'amount': amt,
